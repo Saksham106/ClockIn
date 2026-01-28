@@ -19,6 +19,7 @@ final class TimerManager: ObservableObject {
     private var timerCancellable: AnyCancellable?
     private var storeCancellable: AnyCancellable?
     private var tagsCancellable: AnyCancellable?
+    private var workspaceCancellable: AnyCancellable?
     private var lastActiveRefresh: Date?
     private var isHandlingActive = false
     private var popoverVisible = false
@@ -282,6 +283,16 @@ final class TimerManager: ObservableObject {
 
     private func startTicking() {
         restartTicking(interval: inactiveTickInterval)
+        workspaceCancellable = NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.didWakeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.nowTick = Date()
+                self.invalidateCache(for: self.nowTick)
+                let interval = (self.popoverVisible || self.dashboardVisible) ? self.activeTickInterval : self.inactiveTickInterval
+                self.restartTicking(interval: interval)
+            }
     }
 
     func setPopoverVisible(_ visible: Bool) {

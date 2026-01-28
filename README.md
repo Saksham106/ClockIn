@@ -1,4 +1,4 @@
-# ClockIn ⏱️
+# ClockIn 🔒
 
 ClockIn is a calm, lightweight time tracker that lives in your macOS menu bar. It helps you switch between simple tags and see a clear overview of your day without extra noise. 🌿
 
@@ -20,3 +20,10 @@ Grab the latest release from this repository’s Releases page.
 
 ## About Gatekeeper 🛡️
 This app isn’t notarized yet, so macOS may show a warning the first time you open it. You can still open it via **System Settings → Privacy & Security → Open Anyway**.
+
+## Changelog 🗂️
+### v0.1.1 (Not Released Yet)
+- Wake refresh so the menu bar timer updates immediately after sleep
+
+### v0.1.0
+- Initial release with menu bar tracking, dashboard, and custom tags
