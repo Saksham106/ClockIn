@@ -512,13 +512,15 @@ struct DashboardView: View {
     }
 
     private func activeBreakdownSegments(activeTotalsByTag: [TagItem: TimeInterval], activeTotal: TimeInterval) -> [StackedBarView.Segment] {
-        guard activeTotal > 0 else { return [] }
         let sorted = activeTotalsByTag
             .filter { $0.value > 0 }
             .sorted { $0.value > $1.value }
 
+        let totalDuration = sorted.reduce(0) { $0 + $1.value }
+        guard totalDuration > 0 else { return [] }
+
         return sorted.map { tag, duration in
-            let share = duration / activeTotal
+            let share = duration / totalDuration
             return StackedBarView.Segment(label: tag.name, color: tagColor(tag), fraction: share, duration: duration)
         }
     }

@@ -156,13 +156,11 @@ final class TimerManager: ObservableObject {
     }
 
     func focusedTimeForDay(_ day: Date) -> TimeInterval {
-        let totals = totalsByTag(for: day)
-        return sumTotals(totals, for: ["Work", "School", "Training"])
+        activeTimeForDay(day)
     }
 
     func maintenanceTimeForDay(_ day: Date) -> TimeInterval {
-        let totals = totalsByTag(for: day)
-        return sumTotals(totals, for: ["Food", "Personal Care", "Recovery / Mind", "Social / Admin"])
+        0
     }
 
     func idleTimeForDay(_ day: Date) -> TimeInterval {
@@ -171,7 +169,10 @@ final class TimerManager: ObservableObject {
     }
 
     func activeTimeForDay(_ day: Date) -> TimeInterval {
-        focusedTimeForDay(day) + maintenanceTimeForDay(day)
+        let totals = totalsByTag(for: day)
+        return totals.reduce(0) { partial, entry in
+            entry.key.name == TagDefaults.idleName ? partial : partial + entry.value
+        }
     }
 
     func activeTime(for day: Date) -> TimeInterval {
