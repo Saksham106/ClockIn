@@ -8,13 +8,15 @@ final class TagItem: Identifiable {
     var order: Int
     var isHidden: Bool
     var isSystem: Bool
+    var colorHex: String?
 
-    init(id: UUID = UUID(), name: String, order: Int, isHidden: Bool = false, isSystem: Bool = false) {
+    init(id: UUID = UUID(), name: String, order: Int, isHidden: Bool = false, isSystem: Bool = false, colorHex: String? = nil) {
         self.id = id
         self.name = name
         self.order = order
         self.isHidden = isHidden
         self.isSystem = isSystem
+        self.colorHex = colorHex
     }
 }
 

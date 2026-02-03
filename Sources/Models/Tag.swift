@@ -1,49 +1,80 @@
 import SwiftUI
+import AppKit
 
 struct DefaultTagDefinition: Identifiable {
     let id = UUID()
     let name: String
     let isSystem: Bool
+    let colorHex: String
 }
 
 enum TagDefaults {
     static let idleName = "Idle / Off"
     static let definitions: [DefaultTagDefinition] = [
-        DefaultTagDefinition(name: "School", isSystem: false),
-        DefaultTagDefinition(name: "Work", isSystem: false),
-        DefaultTagDefinition(name: "Training", isSystem: false),
-        DefaultTagDefinition(name: "Food", isSystem: false),
-        DefaultTagDefinition(name: "Personal Care", isSystem: false),
-        DefaultTagDefinition(name: "Recovery / Mind", isSystem: false),
-        DefaultTagDefinition(name: "Social / Admin", isSystem: false),
-        DefaultTagDefinition(name: idleName, isSystem: true)
+        DefaultTagDefinition(name: "School", isSystem: false, colorHex: "#0A84FF"),
+        DefaultTagDefinition(name: "Work", isSystem: false, colorHex: "#64D2FF"),
+        DefaultTagDefinition(name: "Training", isSystem: false, colorHex: "#30D158"),
+        DefaultTagDefinition(name: "Food", isSystem: false, colorHex: "#FF9F0A"),
+        DefaultTagDefinition(name: "Personal Care", isSystem: false, colorHex: "#FF375F"),
+        DefaultTagDefinition(name: "Recovery / Mind", isSystem: false, colorHex: "#BF5AF2"),
+        DefaultTagDefinition(name: "Social / Admin", isSystem: false, colorHex: "#5E5CE6"),
+        DefaultTagDefinition(name: idleName, isSystem: true, colorHex: "#8E8E93")
     ]
 }
 
+func defaultTagColorHex(for tagName: String) -> String? {
+    TagDefaults.definitions.first(where: { $0.name == tagName })?.colorHex
+}
+
 func tagColor(_ tag: TagItem) -> Color {
-    tagColor(tag.name)
+    if let hex = tag.colorHex, let color = Color(hex: hex) {
+        return color
+    }
+    return tagColor(tag.name)
 }
 
 func tagColor(_ tagName: String) -> Color {
-    switch tagName {
-    case "School":
-        return .blue
-    case "Work":
-        return .teal
-    case "Training":
-        return .green
-    case "Food":
-        return .orange
-    case "Personal Care":
-        return .pink
-    case "Recovery / Mind":
-        return .purple
-    case "Social / Admin":
-        return .indigo
-    case TagDefaults.idleName:
-        return .gray
-    default:
-        return .accentColor
+    if let hex = defaultTagColorHex(for: tagName), let color = Color(hex: hex) {
+        return color
+    }
+    return .accentColor
+}
+
+extension Color {
+    init?(hex: String) {
+        let sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+        let length = sanitized.count
+        guard length == 6 || length == 8 else { return nil }
+        guard let value = UInt64(sanitized, radix: 16) else { return nil }
+
+        let r, g, b, a: Double
+        if length == 6 {
+            r = Double((value >> 16) & 0xFF) / 255
+            g = Double((value >> 8) & 0xFF) / 255
+            b = Double(value & 0xFF) / 255
+            a = 1
+        } else {
+            r = Double((value >> 24) & 0xFF) / 255
+            g = Double((value >> 16) & 0xFF) / 255
+            b = Double((value >> 8) & 0xFF) / 255
+            a = Double(value & 0xFF) / 255
+        }
+
+        self = Color(.sRGB, red: r, green: g, blue: b, opacity: a)
+    }
+
+    func toHexString(includeAlpha: Bool = false) -> String? {
+        let nsColor = NSColor(self)
+        guard let rgb = nsColor.usingColorSpace(.sRGB) else { return nil }
+        let r = Int(round(rgb.redComponent * 255))
+        let g = Int(round(rgb.greenComponent * 255))
+        let b = Int(round(rgb.blueComponent * 255))
+        let a = Int(round(rgb.alphaComponent * 255))
+        if includeAlpha {
+            return String(format: "#%02X%02X%02X%02X", r, g, b, a)
+        }
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }
 

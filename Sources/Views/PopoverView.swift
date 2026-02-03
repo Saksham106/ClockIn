@@ -19,6 +19,12 @@ struct PopoverView: View {
                 Text(manager.formattedElapsed(for: manager.currentSegment, now: manager.nowTick))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let note = manager.currentSegment?.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             LazyVGrid(columns: columns, spacing: 12) {

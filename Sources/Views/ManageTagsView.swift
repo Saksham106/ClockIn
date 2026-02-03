@@ -5,6 +5,16 @@ struct ManageTagsView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedTagId: UUID?
     @State private var hoveredTagId: UUID?
+    @State private var didCancel = false
+    @State private var initialSnapshots: [UUID: TagSnapshot] = [:]
+    @State private var hexDrafts: [UUID: String] = [:]
+
+    private struct TagSnapshot {
+        let name: String
+        let colorHex: String?
+        let isHidden: Bool
+        let order: Int
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -42,6 +52,38 @@ struct ManageTagsView: View {
                                     ))
                                     .textFieldStyle(.plain)
                                     .focused($focusedTagId, equals: tag.id)
+                                }
+                            }
+
+                            if !tag.isSystem {
+                                HStack(spacing: 6) {
+                                    ColorPicker("Color", selection: Binding(
+                                        get: { tagColor(tag) },
+                                        set: { newColor in
+                                            let hex = newColor.toHexString()
+                                            tag.colorHex = hex
+                                            if let hex {
+                                                hexDrafts[tag.id] = hex
+                                            }
+                                        }
+                                    ), supportsOpacity: false)
+                                    .labelsHidden()
+                                    .frame(width: 32)
+
+                                    TextField("#RRGGBB", text: Binding(
+                                        get: { hexDrafts[tag.id] ?? (tag.colorHex ?? "") },
+                                        set: { newValue in
+                                            let normalized = normalizeHexInput(newValue)
+                                            hexDrafts[tag.id] = normalized
+                                            if isValidHex(normalized) {
+                                                tag.colorHex = normalized
+                                            }
+                                        }
+                                    ))
+                                    .textFieldStyle(.plain)
+                                    .frame(width: 74)
+                                    .font(.caption)
+                                    .monospaced()
                                 }
                             }
 
@@ -100,6 +142,12 @@ struct ManageTagsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("Cancel") {
+                    restoreInitialState()
+                    didCancel = true
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
                 Button("Done") {
                     manager.saveTagChanges()
                     dismiss()
@@ -110,8 +158,66 @@ struct ManageTagsView: View {
         .padding(20)
         .frame(minWidth: 420, minHeight: 360)
         .onDisappear {
-            manager.saveTagChanges()
+            if !didCancel {
+                manager.saveTagChanges()
+            }
         }
+        .onAppear {
+            if initialSnapshots.isEmpty {
+                captureInitialState()
+            }
+        }
+    }
+
+    private func captureInitialState() {
+        var snapshots: [UUID: TagSnapshot] = [:]
+        var drafts: [UUID: String] = [:]
+        for tag in manager.allTags {
+            snapshots[tag.id] = TagSnapshot(
+                name: tag.name,
+                colorHex: tag.colorHex,
+                isHidden: tag.isHidden,
+                order: tag.order
+            )
+            if let hex = tag.colorHex ?? tagColor(tag).toHexString() {
+                drafts[tag.id] = hex
+            }
+        }
+        initialSnapshots = snapshots
+        hexDrafts = drafts
+    }
+
+    private func restoreInitialState() {
+        for tag in manager.allTags {
+            guard let snapshot = initialSnapshots[tag.id] else { continue }
+            tag.name = snapshot.name
+            tag.colorHex = snapshot.colorHex
+            tag.isHidden = snapshot.isHidden
+            tag.order = snapshot.order
+        }
+        hexDrafts = manager.allTags.reduce(into: [:]) { result, tag in
+            if let hex = tag.colorHex ?? tagColor(tag).toHexString() {
+                result[tag.id] = hex
+            }
+        }
+    }
+
+    private func normalizeHexInput(_ input: String) -> String {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("#") {
+            return trimmed.uppercased()
+        }
+        return "#" + trimmed.uppercased()
+    }
+
+    private func isValidHex(_ input: String) -> Bool {
+        let sanitized = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard sanitized.hasPrefix("#") else { return false }
+        let hex = String(sanitized.dropFirst())
+        guard hex.count == 6, hex.range(of: "^[0-9A-Fa-f]{6}$", options: .regularExpression) != nil else {
+            return false
+        }
+        return true
     }
 
     private func canMove(_ tag: TagItem, direction: Int) -> Bool {

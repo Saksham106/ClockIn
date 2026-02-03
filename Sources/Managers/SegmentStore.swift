@@ -47,6 +47,7 @@ final class SegmentStore: ObservableObject {
         self.modelContext = modelContext
         refreshTags()
         ensureDefaultTags()
+        assignDefaultTagColorsIfMissing()
         refreshTags()
         refreshSegments()
         migrateLegacyIfNeeded()
@@ -70,7 +71,13 @@ final class SegmentStore: ObservableObject {
         if let tag = tags.first(where: { $0.isSystem || $0.name == TagDefaults.idleName }) {
             return tag
         }
-        let created = TagItem(name: TagDefaults.idleName, order: (tags.map { $0.order }.max() ?? -1) + 1, isHidden: false, isSystem: true)
+        let created = TagItem(
+            name: TagDefaults.idleName,
+            order: (tags.map { $0.order }.max() ?? -1) + 1,
+            isHidden: false,
+            isSystem: true,
+            colorHex: defaultTagColorHex(for: TagDefaults.idleName)
+        )
         modelContext.insert(created)
         tags.append(created)
         tags.sort { $0.order < $1.order }
@@ -427,11 +434,26 @@ final class SegmentStore: ObservableObject {
         }
 
         for (index, def) in TagDefaults.definitions.enumerated() {
-            let tag = TagItem(name: def.name, order: index, isHidden: false, isSystem: def.isSystem)
+            let tag = TagItem(name: def.name, order: index, isHidden: false, isSystem: def.isSystem, colorHex: def.colorHex)
             modelContext.insert(tag)
             tags.append(tag)
         }
         saveContext(immediate: true)
+    }
+
+    private func assignDefaultTagColorsIfMissing() {
+        var didChange = false
+        for tag in tags {
+            if tag.colorHex?.isEmpty ?? true {
+                if let defaultHex = defaultTagColorHex(for: tag.name) {
+                    tag.colorHex = defaultHex
+                    didChange = true
+                }
+            }
+        }
+        if didChange {
+            saveContext(immediate: true)
+        }
     }
 
     private func migrateLegacyIfNeeded() {
@@ -532,7 +554,13 @@ final class SegmentStore: ObservableObject {
         }
         let order = (tags.map { $0.order }.max() ?? -1) + 1
         let isSystem = resolvedName == TagDefaults.idleName
-        let tag = TagItem(name: resolvedName, order: order, isHidden: false, isSystem: isSystem)
+        let tag = TagItem(
+            name: resolvedName,
+            order: order,
+            isHidden: false,
+            isSystem: isSystem,
+            colorHex: defaultTagColorHex(for: resolvedName)
+        )
         modelContext.insert(tag)
         tags.append(tag)
         tags.sort { $0.order < $1.order }

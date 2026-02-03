@@ -281,12 +281,21 @@ struct DashboardView: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(tag.name)
-                    .font(.subheadline)
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 10)
-                    .background(tagColor(tag).opacity(0.18), in: Capsule())
-                    .foregroundStyle(tagColor(tag))
+                HStack(spacing: 8) {
+                    Text(tag.name)
+                        .font(.subheadline)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .background(tagColor(tag).opacity(0.18), in: Capsule())
+                        .foregroundStyle(tagColor(tag))
+
+                    if let note = segment.note, !note.isEmpty {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
 
                 if let runningSince {
                     Text(runningSince)

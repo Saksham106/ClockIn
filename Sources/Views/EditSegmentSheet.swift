@@ -143,7 +143,7 @@ struct EditSegmentSheet: View {
                     .foregroundStyle(.red)
             }
 
-            TextField("Note (optional)", text: $noteText)
+            TextField("Label (optional)", text: $noteText)
 
             HStack {
                 Button("Delete", role: .destructive) {
