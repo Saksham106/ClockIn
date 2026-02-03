@@ -12,19 +12,10 @@ struct PopoverView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(manager.currentTag.name)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Text(manager.formattedElapsed(for: manager.currentSegment, now: manager.nowTick))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if let note = manager.currentSegment?.note, !note.isEmpty {
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+            HStack {
+                Text("Switch Tag")
+                    .font(.headline)
+                Spacer()
             }
 
             LazyVGrid(columns: columns, spacing: 12) {
@@ -44,37 +35,6 @@ struct PopoverView: View {
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(tagColor(tag).opacity(manager.currentTag.id == tag.id ? 0.8 : 0.2), lineWidth: 1)
                     )
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Today")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                let totals = manager.totalsForToday()
-                    .filter { $0.value > 0 }
-                    .sorted { $0.value > $1.value }
-
-                if totals.isEmpty {
-                    Text("No tracked time")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(totals, id: \.key) { entry in
-                        let tag = entry.key
-                        let total = entry.value
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(tagColor(tag).opacity(0.8))
-                                .frame(width: 8, height: 8)
-                            Text(tag.name)
-                            Spacer()
-                            Text(formattedDuration(total))
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.caption)
-                    }
                 }
             }
 
@@ -102,7 +62,7 @@ struct PopoverView: View {
             .controlSize(.small)
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(width: 320)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             manager.handleAppBecameActive()
