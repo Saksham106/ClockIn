@@ -6,7 +6,6 @@ struct DashboardView: View {
     @State private var selectedDay: Date = Date()
     @State private var showTimeline: Bool = false
     @State private var editingSegment: Segment?
-    @State private var editMode: EditSegmentSheet.InitialMode = .edit
     @State private var hoveredSegmentId: UUID?
     @State private var tagChangeSegment: Segment?
     @State private var showTagChangeDialog: Bool = false
@@ -70,7 +69,7 @@ struct DashboardView: View {
         }
         .frame(minWidth: 560, minHeight: 640)
         .sheet(item: $editingSegment) { segment in
-            EditSegmentSheet(segment: segment, day: selectedDay, initialMode: editMode)
+            EditSegmentSheet(segment: segment, day: selectedDay)
                 .environmentObject(manager)
         }
         .confirmationDialog("Change Tag", isPresented: $showTagChangeDialog, titleVisibility: .visible) {
@@ -325,12 +324,10 @@ struct DashboardView: View {
             hoveredSegmentId = isHovering ? segment.id : nil
         }
         .onTapGesture {
-            editMode = .edit
             editingSegment = segment
         }
         .contextMenu {
             Button("Split…") {
-                editMode = .split
                 editingSegment = segment
             }
             Button("Change Tag…") {

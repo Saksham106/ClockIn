@@ -99,20 +99,6 @@ final class TimerManager: ObservableObject {
         }
     }
 
-    func quickSplitRecentMinutes(segment: Segment, minutes: Int, tag: TagItem) {
-        let end = segment.end ?? nowTick
-        let split = end.addingTimeInterval(-TimeInterval(minutes) * 60)
-        let currentTag = tagForSegment(segment)
-        do {
-            try store.splitSegment(id: segment.id, at: split, beforeTag: currentTag, afterTag: tag, referenceNow: nowTick)
-            if segment.end == nil, currentTag.id != tag.id {
-                switchTag(to: currentTag)
-            }
-        } catch {
-            // No-op
-        }
-    }
-
 
     func switchTag(to tag: TagItem) {
         store.checkDayRollover(shouldContinueTag: true, now: Date())

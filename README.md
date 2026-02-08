@@ -7,6 +7,10 @@ The idea is simple: when you quietly log what you’re doing, you start spending
 ## Highlights ✨
 - One‑tap tag switching from the menu bar ⚡️
 - Daily dashboard with totals and timeline 📊
+- Quick split presets in the edit sheet (last 5/10/15 minutes) ✂️
+- Smart default for split “after” tag based on past behavior 🧠
+- Split‑first edit sheet with details tucked away 🔍
+- Colored tag dots in split selectors 🎯
 - Custom tags (rename, reorder, hide) 🏷️
 - All data stays on your Mac 🔒
 
@@ -27,6 +31,10 @@ This app isn’t notarized yet, so macOS may show a warning the first time you o
 - Tag color persistence with per-tag color picker and hex input
 - Segment labels shown in timeline and popover
 - Weekly overview stability improvements
+- Quick split presets in Edit Segment
+- Learned default for split “after” tag (based on prior transitions)
+- Simplified split‑first Edit Segment layout
+- Colored tag dots in split selectors
 - Minor UI/UX and bug fixes
 
 ### v0.1.0

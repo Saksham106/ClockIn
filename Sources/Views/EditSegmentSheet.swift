@@ -4,14 +4,8 @@ struct EditSegmentSheet: View {
     @EnvironmentObject private var manager: TimerManager
     @Environment(\.dismiss) private var dismiss
 
-    enum InitialMode {
-        case edit
-        case split
-    }
-
     let segment: Segment
     let day: Date
-    let initialMode: InitialMode
 
     @State private var selectedTag: TagItem = TagItem(name: TagDefaults.idleName, order: 0, isHidden: false, isSystem: true)
     @State private var startTime: Date = Date()
@@ -24,8 +18,9 @@ struct EditSegmentSheet: View {
     @State private var splitAfterTag: TagItem = TagItem(name: TagDefaults.idleName, order: 0, isHidden: false, isSystem: true)
     @State private var splitErrorMessage: String?
     @State private var showDeleteConfirm: Bool = false
-    @State private var showSplitTagPickers: Bool = false
-    @State private var highlightSplit: Bool = false
+    @State private var showDetails: Bool = false
+    @State private var activeSplitComponent: SplitComponent = .minute
+    @State private var hasAdjustedSplitTime: Bool = false
 
     private let calendar = Calendar.current
 
@@ -41,7 +36,7 @@ struct EditSegmentSheet: View {
                 Circle()
                     .fill(tagColor(selectedTag))
                     .frame(width: 10, height: 10)
-                Text(selectedTag.name)
+                Text("Edit \(selectedTag.name)")
                     .font(.title3)
                     .fontWeight(.semibold)
                 if isRunning {
@@ -52,117 +47,122 @@ struct EditSegmentSheet: View {
                 Spacer()
             }
 
-            Text("Duration · \(durationText)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Picker("Tag", selection: $selectedTag) {
-                ForEach(manager.allTags) { tag in
-                    Text(tag.name).tag(tag)
-                }
-            }
-            .pickerStyle(.menu)
-            .onChange(of: selectedTag) { oldTag, newTag in
-                splitBeforeTag = newTag
-                let reference = segment.end ?? manager.nowTick
-                if let suggestion = manager.suggestedAfterTag(for: newTag, referenceDate: reference), suggestion.id != newTag.id {
-                    splitAfterTag = suggestion
-                } else if splitAfterTag.id == oldTag.id {
-                    splitAfterTag = newTag
-                }
-            }
-
-            DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
-            Toggle("Running", isOn: $isRunning)
-
-            DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
-                .disabled(isRunning)
-
-            if isRunning {
-                Text("Ends at now")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("Split segment", isOn: $splitEnabled)
-                    .toggleStyle(.switch)
-                    .onChange(of: splitEnabled) { _, enabled in
-                        if enabled {
-                            showSplitTagPickers = true
+                HStack(spacing: 12) {
+                    Text("Split mode")
+                        .font(.subheadline)
+                    Toggle("Split mode", isOn: $splitEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    if splitEnabled {
+                        Spacer(minLength: 8)
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(tagColor(splitBeforeTag))
+                                .frame(width: 10, height: 10)
+                            tagMenu(selection: $splitBeforeTag)
+                        }
+
+                        Image(systemName: "arrow.right")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(tagColor(splitAfterTag))
+                                .frame(width: 10, height: 10)
+                            tagMenu(selection: $splitAfterTag)
                         }
                     }
-                Text("Splitting creates two segments at the chosen time.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .opacity(splitEnabled ? 1 : 0.6)
+                }
 
                 if splitEnabled {
-                    HStack(spacing: 8) {
-                        Text("Quick split")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Text("Split at")
+                        timePickerLabel
+                        Stepper("", value: Binding(
+                            get: {
+                                activeSplitComponent == .hour
+                                    ? calendar.component(.hour, from: splitTime)
+                                    : calendar.component(.minute, from: splitTime)
+                            },
+                            set: { newValue in
+                                hasAdjustedSplitTime = true
+                                let hour = activeSplitComponent == .hour ? newValue : calendar.component(.hour, from: splitTime)
+                                let minute = activeSplitComponent == .minute ? newValue : calendar.component(.minute, from: splitTime)
+                                splitTime = updatedSplitTime(hour: hour, minute: minute)
+                            }
+                        ), in: activeSplitComponent == .hour ? 0...23 : 0...59)
+                        .labelsHidden()
                         Button("Last 5m") { applyQuickSplit(minutes: 5) }
                         Button("Last 10m") { applyQuickSplit(minutes: 10) }
                         Button("Last 15m") { applyQuickSplit(minutes: 15) }
-                    }
+                }
                     .buttonStyle(.bordered)
 
-                    HStack(spacing: 12) {
-                        Text("Split at")
-                        DatePicker("", selection: $splitTime, displayedComponents: .hourAndMinute)
-                            .labelsHidden()
-                    }
-
-                    if showSplitTagPickers || splitBeforeTag != splitAfterTag {
-                        HStack(spacing: 12) {
-                            Picker("Before", selection: $splitBeforeTag) {
-                                ForEach(manager.allTags) { tag in
-                                    Text(tag.name).tag(tag)
-                                }
-                            }
-                            .pickerStyle(.menu)
-
-                            Text("→")
-                                .foregroundStyle(.secondary)
-
-                            Picker("After", selection: $splitAfterTag) {
-                                ForEach(manager.allTags) { tag in
-                                    Text(tag.name).tag(tag)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
-                    } else {
-                        HStack(spacing: 8) {
-                            Text("Before \(splitBeforeTag.name)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("→")
-                                .foregroundStyle(.secondary)
-                            Text("After \(splitAfterTag.name)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    if let splitErrorMessage {
-                        Text(splitErrorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
+                if let splitErrorMessage {
+                    Text(splitErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 }
             }
             .padding(12)
-            .background(highlightSplit ? .white.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 10))
+            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+
+            DisclosureGroup(isExpanded: $showDetails) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Duration · \(durationText)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Tag", selection: $selectedTag) {
+                        ForEach(manager.allTags) { tag in
+                            Text(tag.name).tag(tag)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: selectedTag) { oldTag, newTag in
+                        splitBeforeTag = newTag
+                        let reference = segment.end ?? manager.nowTick
+                        if let suggestion = manager.suggestedAfterTag(for: newTag, referenceDate: reference), suggestion.id != newTag.id {
+                            splitAfterTag = suggestion
+                        } else if splitAfterTag.id == oldTag.id {
+                            splitAfterTag = newTag
+                        }
+                    }
+
+                    DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
+                    Toggle("Running", isOn: $isRunning)
+
+                    DatePicker("End", selection: $endTime, displayedComponents: .hourAndMinute)
+                        .disabled(isRunning)
+
+                    if isRunning {
+                        Text("Ends at now")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    TextField("Label (optional)", text: $noteText)
+                }
+                .padding(.top, 8)
+            } label: {
+                HStack {
+                    Text("Edit details")
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showDetails.toggle()
+                }
+            }
 
             if let validationError {
                 Text(validationError)
                     .font(.caption)
                     .foregroundStyle(.red)
             }
-
-            TextField("Label (optional)", text: $noteText)
 
             HStack {
                 Button("Delete", role: .destructive) {
@@ -203,12 +203,10 @@ struct EditSegmentSheet: View {
             endTime = end
             isRunning = segment.end == nil
             noteText = segment.note ?? ""
-            splitEnabled = false
+            splitEnabled = true
             splitTime = defaultSplitTime(for: segment, end: end)
             splitBeforeTag = selectedTag
             splitAfterTag = manager.suggestedAfterTag(for: selectedTag, referenceDate: end) ?? selectedTag
-            showSplitTagPickers = false
-            highlightSplit = initialMode == .split
         }
         .confirmationDialog("Delete Segment?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -238,7 +236,76 @@ struct EditSegmentSheet: View {
         let target = end.addingTimeInterval(-TimeInterval(minutes) * 60)
         splitTime = target
         splitEnabled = true
-        showSplitTagPickers = true
+        hasAdjustedSplitTime = true
+    }
+
+    private func tagMenu(selection: Binding<TagItem>) -> some View {
+        Menu {
+            ForEach(manager.allTags) { tag in
+                Button(tag.name) {
+                    selection.wrappedValue = tag
+                }
+            }
+        } label: {
+            Text(selection.wrappedValue.name)
+                .lineLimit(2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(1)
+    }
+
+    private var timePickerLabel: some View {
+        let components = splitTimeComponents(for: splitTime)
+        return HStack(spacing: 0) {
+            Text(components.hour)
+                .foregroundStyle(hasAdjustedSplitTime && activeSplitComponent == .hour ? .primary : .secondary)
+                .onTapGesture {
+                    activeSplitComponent = .hour
+                    hasAdjustedSplitTime = true
+                }
+            Text(components.separator)
+                .foregroundStyle(.secondary)
+            Text(components.minute)
+                .foregroundStyle(hasAdjustedSplitTime && activeSplitComponent == .minute ? .primary : .secondary)
+                .onTapGesture {
+                    activeSplitComponent = .minute
+                    hasAdjustedSplitTime = true
+                }
+            Text(components.suffix)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 2)
+        }
+        .font(.system(.headline, design: .monospaced))
+        .monospacedDigit()
+        .contentShape(Rectangle())
+    }
+
+    private func splitTimeComponents(for date: Date) -> (hour: String, minute: String, separator: String, suffix: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        let formatted = formatter.string(from: date)
+        let parts = formatted.split(separator: " ")
+        let time = parts.first.map(String.init) ?? ""
+        let suffix = parts.dropFirst().first.map(String.init) ?? ""
+        let timeParts = time.split(separator: ":")
+        let hour = timeParts.first.map(String.init) ?? ""
+        let minute = timeParts.dropFirst().first.map(String.init) ?? ""
+        return (hour, minute, ":", " " + suffix)
+    }
+
+    private func updatedSplitTime(hour: Int, minute: Int) -> Date {
+        let clampedHour = max(0, min(23, hour))
+        let clampedMinute = max(0, min(59, minute))
+        return calendar.date(bySettingHour: clampedHour, minute: clampedMinute, second: 0, of: splitTime) ?? splitTime
+    }
+
+    private enum SplitComponent {
+        case hour
+        case minute
     }
 
     private func combine(day: Date, time: Date) -> Date {
