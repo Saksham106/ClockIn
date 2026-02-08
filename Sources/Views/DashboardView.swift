@@ -131,7 +131,7 @@ struct DashboardView: View {
                 Text("Day Overview")
                     .font(.title3)
                     .fontWeight(.semibold)
-                Text("· \(shortDateString(for: selectedDay))")
+                Text("· \(shortDateString(for: selectedDay)) · \(weekdayString(for: selectedDay))")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
             }
@@ -419,6 +419,12 @@ struct DashboardView: View {
         return formatter.string(from: date)
     }
 
+    private func weekdayString(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date)
+    }
+
     private var last7DaysSection: some View {
         let activeTotal = manager.activeTimeForWindow(anchoredOn: selectedDay)
         let idleTotal = manager.idleTimeForWindow(anchoredOn: selectedDay)
@@ -432,9 +438,14 @@ struct DashboardView: View {
         let idleAverage = trackedDaysCount > 0 ? idleTotal / Double(trackedDaysCount) : 0
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Last 7 Days — Active Overview")
-                .font(.title3)
-                .fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Last 7 Days — Active Overview")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text("Excludes today")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             if activeTotal <= 0 {
                 Text("No active time in the last 7 days")

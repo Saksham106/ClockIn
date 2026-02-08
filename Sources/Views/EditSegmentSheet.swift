@@ -62,6 +62,15 @@ struct EditSegmentSheet: View {
                 }
             }
             .pickerStyle(.menu)
+            .onChange(of: selectedTag) { oldTag, newTag in
+                splitBeforeTag = newTag
+                let reference = segment.end ?? manager.nowTick
+                if let suggestion = manager.suggestedAfterTag(for: newTag, referenceDate: reference), suggestion.id != newTag.id {
+                    splitAfterTag = suggestion
+                } else if splitAfterTag.id == oldTag.id {
+                    splitAfterTag = newTag
+                }
+            }
 
             DatePicker("Start", selection: $startTime, displayedComponents: .hourAndMinute)
             Toggle("Running", isOn: $isRunning)
@@ -89,6 +98,16 @@ struct EditSegmentSheet: View {
                     .opacity(splitEnabled ? 1 : 0.6)
 
                 if splitEnabled {
+                    HStack(spacing: 8) {
+                        Text("Quick split")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Last 5m") { applyQuickSplit(minutes: 5) }
+                        Button("Last 10m") { applyQuickSplit(minutes: 10) }
+                        Button("Last 15m") { applyQuickSplit(minutes: 15) }
+                    }
+                    .buttonStyle(.bordered)
+
                     HStack(spacing: 12) {
                         Text("Split at")
                         DatePicker("", selection: $splitTime, displayedComponents: .hourAndMinute)
@@ -187,7 +206,7 @@ struct EditSegmentSheet: View {
             splitEnabled = false
             splitTime = defaultSplitTime(for: segment, end: end)
             splitBeforeTag = selectedTag
-            splitAfterTag = selectedTag
+            splitAfterTag = manager.suggestedAfterTag(for: selectedTag, referenceDate: end) ?? selectedTag
             showSplitTagPickers = false
             highlightSplit = initialMode == .split
         }
@@ -212,6 +231,14 @@ struct EditSegmentSheet: View {
         }
         let mid = segment.start.addingTimeInterval(end.timeIntervalSince(segment.start) / 2)
         return mid
+    }
+
+    private func applyQuickSplit(minutes: Int) {
+        let end = segment.end ?? manager.nowTick
+        let target = end.addingTimeInterval(-TimeInterval(minutes) * 60)
+        splitTime = target
+        splitEnabled = true
+        showSplitTagPickers = true
     }
 
     private func combine(day: Date, time: Date) -> Date {

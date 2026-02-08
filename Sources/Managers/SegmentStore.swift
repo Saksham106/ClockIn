@@ -153,6 +153,13 @@ final class SegmentStore: ObservableObject {
             .sorted { $0.start < $1.start }
     }
 
+    func segmentCovering(_ date: Date) -> Segment? {
+        segments
+            .filter { $0.start <= date && ($0.end ?? date.addingTimeInterval(1)) > date }
+            .sorted { $0.start > $1.start }
+            .first
+    }
+
     func totalsByTag(for date: Date, referenceNow: Date) -> [TagItem: TimeInterval] {
         var totals: [TagItem: TimeInterval] = Dictionary(uniqueKeysWithValues: tags.map { ($0, 0) })
         let cleaned = cleanSegments(segments(for: date), referenceNow: referenceNow)

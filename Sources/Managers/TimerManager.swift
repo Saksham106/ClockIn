@@ -38,6 +38,7 @@ final class TimerManager: ObservableObject {
         let restoredPreviousEnd: Date?
     }
 
+
     init(modelContext: ModelContext) {
         store = SegmentStore(modelContext: modelContext)
         segments = store.segments
@@ -97,6 +98,21 @@ final class TimerManager: ObservableObject {
             self.isHandlingActive = false
         }
     }
+
+    func quickSplitRecentMinutes(segment: Segment, minutes: Int, tag: TagItem) {
+        let end = segment.end ?? nowTick
+        let split = end.addingTimeInterval(-TimeInterval(minutes) * 60)
+        let currentTag = tagForSegment(segment)
+        do {
+            try store.splitSegment(id: segment.id, at: split, beforeTag: currentTag, afterTag: tag, referenceNow: nowTick)
+            if segment.end == nil, currentTag.id != tag.id {
+                switchTag(to: currentTag)
+            }
+        } catch {
+            // No-op
+        }
+    }
+
 
     func switchTag(to tag: TagItem) {
         store.checkDayRollover(shouldContinueTag: true, now: Date())
@@ -230,7 +246,7 @@ final class TimerManager: ObservableObject {
 
     private func windowDays(anchoredOn day: Date) -> [Date] {
         let start = calendar.startOfDay(for: day)
-        return (0..<7).compactMap { offset in
+        return (1...7).compactMap { offset in
             calendar.date(byAdding: .day, value: -offset, to: start)
         }
     }
@@ -268,6 +284,33 @@ final class TimerManager: ObservableObject {
 
     func splitSegment(id: UUID, at splitTime: Date, beforeTag: TagItem, afterTag: TagItem) throws {
         try store.splitSegment(id: id, at: splitTime, beforeTag: beforeTag, afterTag: afterTag, referenceNow: nowTick)
+    }
+
+    func suggestedAfterTag(for tag: TagItem, referenceDate: Date) -> TagItem? {
+        let lastWeek = calendar.date(byAdding: .day, value: -7, to: referenceDate) ?? referenceDate
+        if let lastWeekSegment = store.segmentCovering(lastWeek) {
+            let lastWeekTag = tagForSegment(lastWeekSegment)
+            if lastWeekTag.id != tag.id {
+                return lastWeekTag
+            }
+        }
+
+        let sorted = segments.sorted { $0.start < $1.start }
+        var counts: [UUID: Int] = [:]
+        for idx in 0..<max(0, sorted.count - 1) {
+            let current = sorted[idx]
+            let next = sorted[idx + 1]
+            let currentTag = tagForSegment(current)
+            let nextTag = tagForSegment(next)
+            guard currentTag.id == tag.id, nextTag.id != tag.id else { continue }
+            counts[nextTag.id, default: 0] += 1
+        }
+
+        if let best = counts.max(by: { $0.value < $1.value })?.key {
+            return allTags.first(where: { $0.id == best })
+        }
+
+        return nil
     }
 
     func mergeAdjacent(for day: Date) {

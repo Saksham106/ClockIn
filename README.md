@@ -24,6 +24,10 @@ This app isn’t notarized yet, so macOS may show a warning the first time you o
 ## Changelog 🗂️
 ### v0.1.1 (Not Released Yet)
 - Wake refresh so the menu bar timer updates immediately after sleep
+- Tag color persistence with per-tag color picker and hex input
+- Segment labels shown in timeline and popover
+- Weekly overview stability improvements
+- Minor UI/UX and bug fixes
 
 ### v0.1.0
 - Initial release with menu bar tracking, dashboard, and custom tags
